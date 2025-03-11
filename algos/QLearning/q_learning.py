@@ -9,6 +9,7 @@ class QLearning:
         self.env = env
         self.state_size = state_size
         self.action_size = action_size
+        self.q_table = []
 
     def train_q_learning(
         self,
@@ -21,7 +22,7 @@ class QLearning:
     ):
         """Train Q-Learning"""
         print("\n===== ENTRAÎNEMENT Q-LEARNING =====")
-        q_table = np.zeros([self.state_size, self.action_size])
+        self.q_table = np.zeros([self.state_size, self.action_size])
 
         all_steps = []
         all_rewards = []
@@ -36,18 +37,18 @@ class QLearning:
                 if np.random.uniform(0, 1) < epsilon:
                     action = self.env.action_space.sample()
                 else:
-                    action = np.argmax(q_table[state])
+                    action = np.argmax(self.q_table[state])
 
                 next_state, reward, terminated, truncated, _ = self.env.step(action)
                 done = terminated or truncated
 
-                old_value = q_table[state, action]
-                next_max = np.max(q_table[next_state])
+                old_value = self.q_table[state, action]
+                next_max = np.max(self.q_table[next_state])
 
                 new_value = (1 - alpha) * old_value + alpha * (
                     reward + gamma * next_max
                 )
-                q_table[state, action] = new_value
+                self.q_table[state, action] = new_value
 
                 state = next_state
                 episode_steps += 1
@@ -69,19 +70,12 @@ class QLearning:
         print(f"Nombre moyen d'étapes: {avg_steps:.2f}")
         print(f"Récompense moyenne: {avg_rewards:.2f}")
 
-        self.env.close()
-
-        return q_table
-
-    def test_q_learning(self, q_table, episodes, start_time=None, time_limit=None):
+    def test_q_learning(self, env, episodes, start_time=None, time_limit=None):
         """Test Q-Learning"""
         print("\n===== TEST Q-LEARNING =====")
 
         total_steps = 0
         total_rewards = 0
-        env = gym.make("Taxi-v3", render_mode="human").env
-
-        env.reset()
 
         for episode in tqdm(range(episodes)):
             state, _ = env.reset()
@@ -103,7 +97,7 @@ class QLearning:
                         print(f"Récompense moyenne: {avg_rewards:.2f}")
                         return
 
-                action = np.argmax(q_table[state])
+                action = np.argmax(self.q_table[state])
                 next_state, reward, terminated, truncated, _ = env.step(action)
                 done = terminated or truncated
 
@@ -120,7 +114,5 @@ class QLearning:
         print(f"\nPerformance de Q-Learning sur {episodes} épisodes:")
         print(f"Nombre moyen d'étapes: {avg_steps:.2f}")
         print(f"Récompense moyenne: {avg_rewards:.2f}")
-
-        env.close()
 
         return avg_steps, avg_rewards

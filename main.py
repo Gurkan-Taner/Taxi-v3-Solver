@@ -20,6 +20,8 @@ def main():
     elif mode == 3:
         solver.run_time_mode()
 
+    solver.env.close()
+
 
 if __name__ == "__main__":
     main()

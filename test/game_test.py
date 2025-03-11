@@ -66,5 +66,4 @@ while not episode_over:
                     env.reset()
                     env.render()
 
-debug(observation, reward, terminated, truncated, info)
 env.close()

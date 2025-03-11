@@ -89,12 +89,13 @@ class QLearning:
                     elapsed_time = current_time - start_time
                     if elapsed_time >= time_limit:
                         print(f"Temps écoulé après {episode} épisodes de test")
-                        avg_steps = total_steps / episode
-                        avg_rewards = total_rewards / episode
+                        if episode > 0:
+                            avg_steps = total_steps / episode
+                            avg_rewards = total_rewards / episode
 
-                        print(f"\nPerformance de Q-Learning sur {episode} épisode:")
-                        print(f"Nombre moyen d'étapes: {avg_steps:.2f}")
-                        print(f"Récompense moyenne: {avg_rewards:.2f}")
+                            print(f"\nPerformance de Q-Learning sur {episode} épisode:")
+                            print(f"Nombre moyen d'étapes: {avg_steps:.2f}")
+                            print(f"Récompense moyenne: {avg_rewards:.2f}")
                         return
 
                 action = np.argmax(self.q_table[state])

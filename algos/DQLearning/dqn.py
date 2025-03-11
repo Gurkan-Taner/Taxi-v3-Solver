@@ -200,6 +200,7 @@ class DQNAgent:
     def load_model(self, path):
         self.online_net = DQN(self.observation_space, self.action_space)
         self.online_net.load_state_dict(torch.load(path, weights_only=True))
+        print(f"[INFO]: model loaded from '{path}'")
 
 
 class DQN(nn.Module):

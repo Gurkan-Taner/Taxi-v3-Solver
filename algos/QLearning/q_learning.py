@@ -64,18 +64,14 @@ class QLearning:
                     f"Épisode {episode}/{episodes}, Étapes: {episode_steps}, Récompense: {episode_reward}, Epsilon: {epsilon:.2f}"
                 )
 
-        avg_steps = np.mean(all_steps[-100:])
-        avg_rewards = np.mean(all_rewards[-100:])
-        print(f"\nPerformance finale (moyenne sur 100 derniers épisodes):")
-        print(f"Nombre moyen d'étapes: {avg_steps:.2f}")
-        print(f"Récompense moyenne: {avg_rewards:.2f}")
+        return all_rewards, all_steps
 
     def test_q_learning(self, env, episodes, start_time=None, time_limit=None):
         """Test Q-Learning"""
         print("\n===== TEST Q-LEARNING =====")
 
-        total_steps = 0
-        total_rewards = 0
+        total_steps = []
+        total_rewards = []
 
         for episode in tqdm(range(episodes)):
             state, _ = env.reset()
@@ -106,14 +102,7 @@ class QLearning:
                 episode_steps += 1
                 episode_reward += reward
 
-            total_steps += episode_steps
-            total_rewards += episode_reward
+            total_steps.append(episode_steps)
+            total_rewards.append(episode_reward)
 
-        avg_steps = total_steps / episodes
-        avg_rewards = total_rewards / episodes
-
-        print(f"\nPerformance de Q-Learning sur {episodes} épisodes:")
-        print(f"Nombre moyen d'étapes: {avg_steps:.2f}")
-        print(f"Récompense moyenne: {avg_rewards:.2f}")
-
-        return avg_steps, avg_rewards
+        return total_rewards, total_steps

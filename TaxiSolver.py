@@ -107,8 +107,3 @@ class TaxiSolver:
             self.dqn.test_dqn(env=env, episodes=testing_episodes)
 
         env.close()
-
-    def brute_force(self, episodes):
-        """Algorithme de force brute pour comparaison"""
-        print("\n===== ALGORITHME BRUTE FORCE =====")
-        print("TODO")

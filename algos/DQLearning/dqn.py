@@ -136,17 +136,13 @@ class DQNAgent:
                     f"Épisode {episode+1}, Récompense moyenne (50 derniers épisodes): {avg_reward:.2f}, Epsilon: {epsilon:.2f}"
                 )
 
-        avg_steps = np.mean(all_steps[-100:])
-        avg_rewards = np.mean(all_rewards[-100:])
-        print(f"\nPerformance finale (moyenne sur 100 derniers épisodes):")
-        print(f"Nombre moyen d'étapes: {avg_steps:.2f}")
-        print(f"Récompense moyenne: {avg_rewards:.2f}")
+        return all_rewards, all_steps
 
     def test_dqn(self, env, episodes, start_time=None, time_limit=None):
         print("\n===== TEST DQN =====")
 
-        total_steps = 0
-        total_rewards = 0
+        total_steps = []
+        total_rewards = []
 
         for episode in tqdm(range(episodes)):
             state, _ = env.reset()
@@ -182,20 +178,13 @@ class DQNAgent:
                 episode_steps += 1
                 episode_reward += reward
 
-            total_rewards += episode_reward
-            total_steps += episode_steps
+            total_rewards.append(episode_reward)
+            total_steps.append(episode_steps)
 
-        avg_steps = total_steps / episodes
-        avg_rewards = total_rewards / episodes
+        return total_rewards, total_steps
 
-        print(f"\nPerformance du DQN sur {episodes} épisodes:")
-        print(f"Nombre moyen d'étapes: {avg_steps:.2f}")
-        print(f"Récompense moyenne: {avg_rewards:.2f}")
-
-        return avg_steps, avg_rewards
-
-    def save_model(self):
-        torch.save(self.online_net.state_dict(), "taxi_dqn_model.pth")
+    def save_model(self, path):
+        torch.save(self.online_net.state_dict(), path)
 
     def load_model(self, path):
         self.online_net = DQN(self.observation_space, self.action_space)

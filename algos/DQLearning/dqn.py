@@ -18,7 +18,6 @@ EPSILON_END = 0.1  # Valeur finale d'epsilon
 EPSILON_DECAY = 0.995  # Taux de décroissance d'epsilon
 TARGET_UPDATE_FREQ = 100  # Fréquence de mise à jour du réseau cible
 LEARNING_RATE = 1e-3  # Taux d'apprentissage
-NUM_EPISODES = 10000  # Nombre d'épisodes d'entraînement
 
 
 class DQNAgent:

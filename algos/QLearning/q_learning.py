@@ -55,7 +55,7 @@ class QLearning:
                 episode_reward += reward
 
             epsilon = max(min_epsilon, epsilon - epsilon_decay)
-
+            # TODO: sans epsilon decay
             all_steps.append(episode_steps)
             all_rewards.append(episode_reward)
 

@@ -20,13 +20,11 @@ def main():
 
     solver = create_solver()
 
-    # Menu de sélection du mode
     mode = st.sidebar.radio(
         "Choisissez un mode",
         ["Mode utilisateur", "Mode temps limité", "Mode temps illimité"],
     )
 
-    # Configuration générale
     st.sidebar.subheader("Paramètres communs")
     training_episodes = st.sidebar.slider(
         "Nombre d'épisodes d'entraînement", 100, 10000, 1000, step=5
@@ -35,13 +33,11 @@ def main():
         "Nombre d'épisodes de test", 10, 1000, 100, step=5
     )
 
-    # Chargement du modèle (option)
     load_model = st.sidebar.checkbox("Charger un modèle pré-entraîné")
     model_path = None
     if load_model:
         model_path = st.sidebar.text_input("Chemin du modèle", "./taxi_dqn_model.pth")
 
-    # Fonction pour afficher les graphiques
     def plot_results(q_rewards=None, dqn_rewards=None, q_steps=None, dqn_steps=None):
         if q_rewards is not None and dqn_rewards is not None:
             st.subheader("Récompenses obtenues")
@@ -55,7 +51,6 @@ def main():
             )
             st.plotly_chart(fig1, use_container_width=True)
 
-            # Moyennes sur les 100 derniers épisodes
             if len(q_rewards) >= 100 and len(dqn_rewards) >= 100:
                 q_avg = np.mean(q_rewards[-100:])
                 dqn_avg = np.mean(dqn_rewards[-100:])
@@ -80,7 +75,6 @@ def main():
             )
             st.plotly_chart(fig2, use_container_width=True)
 
-            # Moyennes sur les 100 derniers épisodes
             if len(q_steps) >= 100 and len(dqn_steps) >= 100:
                 q_steps_avg = np.mean(q_steps[-100:])
                 dqn_steps_avg = np.mean(dqn_steps[-100:])
@@ -93,26 +87,21 @@ def main():
                     "Étapes moyennes DQN (100 derniers)", f"{dqn_steps_avg:.2f}"
                 )
 
-    # Fonction pour entraîner et tester avec suivi pour affichage
     def train_and_test():
         with st.spinner("Entraînement des modèles en cours..."):
-            # Paramètres d'entraînement
             if mode == "Mode utilisateur":
-                # Q-Learning paramètres
                 alpha = st.session_state.get("alpha", 0.6)
                 gamma = st.session_state.get("gamma", 0.7)
                 epsilon = st.session_state.get("epsilon", 0.8)
                 min_epsilon = st.session_state.get("min_epsilon", 0.1)
                 epsilon_decay = st.session_state.get("epsilon_decay", 1e-4)
             else:
-                # Paramètres optimisés
                 alpha = 0.6
                 gamma = 0.7
                 epsilon = 0.8
                 min_epsilon = 0.1
                 epsilon_decay = 1e-4
 
-            # Entraînement Q-Learning avec suivi des métriques
             q_train_rewards, q_train_steps = solver.q_learning.train_q_learning(
                 training_episodes,
                 alpha,
@@ -122,7 +111,6 @@ def main():
                 epsilon_decay,
             )
 
-            # Entraînement DQN avec suivi des métriques
             if model_path:
                 solver.dqn.load_model(model_path)
                 dqn_train_rewards, dqn_train_steps = [], []
@@ -134,13 +122,11 @@ def main():
 
             st.success("Entraînement terminé!")
 
-            # Affichage des graphiques d'entraînement
             st.subheader("Résultats d'entraînement")
             plot_results(
                 q_train_rewards, dqn_train_rewards, q_train_steps, dqn_train_steps
             )
 
-        # Test des modèles
         with st.spinner("Test des modèles en cours..."):
             env = gym.make("Taxi-v3")
 
@@ -156,7 +142,6 @@ def main():
                 time_limit=time_limit,
             )
 
-            # start_time = time()
             dqn_test_rewards, dqn_test_steps = solver.dqn.test_dqn(
                 env=env,
                 episodes=testing_episodes,
@@ -168,11 +153,9 @@ def main():
 
             st.success("Tests terminés!")
 
-            # Affichage des graphiques de test
             st.subheader("Résultats de test")
             plot_results(q_test_rewards, dqn_test_rewards, q_test_steps, dqn_test_steps)
 
-            # Comparaison des performances moyennes
             q_avg_reward = np.mean(q_test_rewards)
             dqn_avg_reward = np.mean(dqn_test_rewards)
             q_avg_steps = np.mean(q_test_steps)
@@ -189,7 +172,6 @@ def main():
             st.subheader("Comparaison des performances")
             st.dataframe(comparison_df, use_container_width=True)
 
-            # Barplot comparatif
             fig = px.bar(
                 comparison_df,
                 x="Algorithme",
@@ -199,13 +181,11 @@ def main():
             )
             st.plotly_chart(fig, use_container_width=True)
 
-            # Option pour sauvegarder le modèle DQN
             if st.button("Sauvegarder le modèle DQN"):
-                save_path = "./toto.pth"
+                save_path = "./taxi_dqn_model.pth"
                 solver.dqn.save_model(save_path)
                 st.success(f"Modèle sauvegardé sous {save_path}")
 
-    # Configuration spécifique selon le mode
     if mode == "Mode utilisateur":
         st.sidebar.subheader("Paramètres Q-Learning")
         st.sidebar.slider(
@@ -252,7 +232,7 @@ def main():
         """
         )
 
-    else:  # Mode temps illimité
+    else:
         st.write(
             """
         ## Mode temps illimité
@@ -261,11 +241,9 @@ def main():
         """
         )
 
-    # Bouton pour lancer l'exécution
     if st.button("Lancer l'apprentissage et les tests"):
         train_and_test()
 
-    # Explication de l'environnement
     with st.expander("À propos de l'environnement Taxi-v3"):
         st.write(
             """
@@ -286,7 +264,6 @@ def main():
         """
         )
 
-        # Image d'illustration
         st.image(
             "https://www.gymlibrary.dev/_images/taxi.gif",
             caption="Illustration de l'environnement Taxi-v3",

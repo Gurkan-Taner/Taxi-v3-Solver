@@ -4,3 +4,5 @@
 **/.DS_Store
 
 **/taxi_dqn_model.pth
+
+**/data/

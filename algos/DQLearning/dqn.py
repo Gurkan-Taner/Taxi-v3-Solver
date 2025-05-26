@@ -1,13 +1,12 @@
 from time import time
 import gymnasium as gym
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import random
-import matplotlib.pyplot as plt
 from collections import deque
 from tqdm import tqdm
+import numpy as np
 
 GAMMA = 0.99  # Facteur de réduction pour les récompenses futures
 BATCH_SIZE = 64  # Taille du batch pour l'apprentissage
@@ -33,8 +32,6 @@ class DQNAgent:
         self.optimizer = optim.Adam(self.online_net.parameters(), lr=LEARNING_RATE)
         self.replay_buffer = deque(maxlen=BUFFER_SIZE)
 
-        pass
-
     def _state_to_tensor(self, state):
         # One-hot encoding pour l'état
         tensor = torch.zeros(self.observation_space)
@@ -57,7 +54,7 @@ class DQNAgent:
         epsilon = EPSILON_START
         step = 0
 
-        for episode in tqdm(range(episodes)):
+        for _ in tqdm(range(episodes)):
             state, _ = self.env.reset()
             episode_steps = 0
             episode_reward = 0
@@ -129,12 +126,6 @@ class DQNAgent:
             all_rewards.append(episode_reward)
             all_steps.append(episode_steps)
 
-            if (episode + 1) % 50 == 0:
-                avg_reward = np.mean(all_rewards[-50:])
-                print(
-                    f"Épisode {episode+1}, Récompense moyenne (50 derniers épisodes): {avg_reward:.2f}, Epsilon: {epsilon:.2f}"
-                )
-
         return all_rewards, all_steps
 
     def test_dqn(self, env, episodes, start_time=None, time_limit=None):
@@ -157,13 +148,8 @@ class DQNAgent:
                     elapsed_time = current_time - start_time
                     if elapsed_time >= time_limit:
                         print(f"Temps écoulé après {episode} épisodes de test")
-                        avg_steps = total_steps / episode
-                        avg_rewards = total_rewards / episode
 
-                        print(f"\nPerformance de Q-Learning sur {episode} épisode:")
-                        print(f"Nombre moyen d'étapes: {avg_steps:.2f}")
-                        print(f"Récompense moyenne: {avg_rewards:.2f}")
-                        return
+                        return total_rewards, total_steps
 
                 state_tensor = self._state_to_tensor(state).unsqueeze(0)
                 with torch.no_grad():
@@ -183,6 +169,7 @@ class DQNAgent:
         return total_rewards, total_steps
 
     def save_model(self, path):
+        print(f"[INFO]: saving model to '{path}'")
         torch.save(self.online_net.state_dict(), path)
 
     def load_model(self, path):

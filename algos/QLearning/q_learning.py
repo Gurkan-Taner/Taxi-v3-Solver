@@ -27,7 +27,7 @@ class QLearning:
         all_steps = []
         all_rewards = []
 
-        for episode in tqdm(range(episodes)):
+        for _ in tqdm(range(episodes)):
             state, _ = self.env.reset()
             done = False
             episode_steps = 0
@@ -54,15 +54,10 @@ class QLearning:
                 episode_steps += 1
                 episode_reward += reward
 
-            epsilon = max(min_epsilon, epsilon - epsilon_decay)
+            epsilon = max(min_epsilon, epsilon * np.exp(-epsilon_decay))
             # TODO: sans epsilon decay
             all_steps.append(episode_steps)
             all_rewards.append(episode_reward)
-
-            if episode % max(1, episodes // 10) == 0:
-                print(
-                    f"Épisode {episode}/{episodes}, Étapes: {episode_steps}, Récompense: {episode_reward}, Epsilon: {epsilon:.2f}"
-                )
 
         return all_rewards, all_steps
 
@@ -85,14 +80,8 @@ class QLearning:
                     elapsed_time = current_time - start_time
                     if elapsed_time >= time_limit:
                         print(f"Temps écoulé après {episode} épisodes de test")
-                        if episode > 0:
-                            avg_steps = total_steps / episode
-                            avg_rewards = total_rewards / episode
 
-                            print(f"\nPerformance de Q-Learning sur {episode} épisode:")
-                            print(f"Nombre moyen d'étapes: {avg_steps:.2f}")
-                            print(f"Récompense moyenne: {avg_rewards:.2f}")
-                        return
+                        return total_rewards, total_steps
 
                 action = np.argmax(self.q_table[state])
                 next_state, reward, terminated, truncated, _ = env.step(action)
@@ -106,3 +95,12 @@ class QLearning:
             total_rewards.append(episode_reward)
 
         return total_rewards, total_steps
+
+    def select_action(self, state, epsilon=0.1):
+        if np.random.random() < epsilon:
+            return np.random.choice(self.action_size)
+        else:
+            q_values = self.q_table[state]
+            max_q = np.max(q_values)
+            actions_with_max_q = np.where(q_values == max_q)[0]
+            return np.random.choice(actions_with_max_q)

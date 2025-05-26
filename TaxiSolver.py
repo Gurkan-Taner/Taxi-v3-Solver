@@ -1,7 +1,5 @@
 from time import time
 import gymnasium as gym
-import numpy as np
-from tqdm import tqdm
 
 from algos.QLearning.q_learning import QLearning
 from algos.DQLearning.dqn import DQNAgent

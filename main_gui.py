@@ -1,5 +1,4 @@
 import streamlit as st
-import matplotlib.pyplot as plt
 from time import time
 import pandas as pd
 import gymnasium as gym
@@ -9,36 +8,247 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 
-def main():
-    st.title("Projet Taxi-v3 Reinforcement Learning")
-    st.sidebar.header("Configuration")
+class TaxiApp:
+    def __init__(self):
+        self.solver = self._create_solver()
 
-    # Création de l'environnement et de l'agent
+    @staticmethod
     @st.cache_resource
-    def create_solver():
+    def _create_solver():
         return TaxiSolver()
 
-    solver = create_solver()
+    def setup_page(self):
+        st.title("Projet Taxi-v3 Reinforcement Learning")
+        st.sidebar.header("Configuration")
 
-    mode = st.sidebar.radio(
-        "Choisissez un mode",
-        ["Mode utilisateur", "Mode temps limité", "Mode temps illimité"],
-    )
+        if "can_save_dqn" not in st.session_state:
+            st.session_state["can_save_dqn"] = False
 
-    st.sidebar.subheader("Paramètres communs")
-    training_episodes = st.sidebar.slider(
-        "Nombre d'épisodes d'entraînement", 100, 10000, 1000, step=5
-    )
-    testing_episodes = st.sidebar.slider(
-        "Nombre d'épisodes de test", 10, 1000, 100, step=5
-    )
+    def get_sidebar_config(self):
+        config = {}
 
-    load_model = st.sidebar.checkbox("Charger un modèle pré-entraîné")
-    model_path = None
-    if load_model:
-        model_path = st.sidebar.text_input("Chemin du modèle", "./taxi_dqn_model.pth")
+        config["mode"] = st.sidebar.radio(
+            "Choisissez un mode",
+            ["Mode utilisateur", "Mode temps limité", "Mode temps illimité"],
+        )
 
-    def plot_results(q_rewards=None, dqn_rewards=None, q_steps=None, dqn_steps=None):
+        st.sidebar.subheader("Paramètres communs")
+        config["training_episodes"] = st.sidebar.slider(
+            "Nombre d'épisodes d'entraînement", 100, 10000, 1000, step=5
+        )
+        config["testing_episodes"] = st.sidebar.slider(
+            "Nombre d'épisodes de test", 10, 1000, 100, step=5
+        )
+
+        config["load_model"] = st.sidebar.checkbox("Charger un modèle pré-entraîné")
+        config["model_path"] = None
+
+        if config["load_model"]:
+            config["model_path"] = st.sidebar.text_input(
+                "Chemin du modèle", "./taxi_dqn_model.pth"
+            )
+
+        config["show_visualization"] = st.sidebar.checkbox(
+            "Afficher la visualisation en direct", value=False
+        )
+        if config["show_visualization"]:
+            config["visualization_speed"] = st.sidebar.slider(
+                "Vitesse de la visualisation", 0.01, 1.0, 0.1, 0.01
+            )
+            config["visualization_episodes"] = st.sidebar.slider(
+                "Nombre d'épisodes à visualiser", 1, 10, 3, step=1
+            )
+        else:
+            config["visualization_speed"] = 0
+            config["visualization_episodes"] = 0
+
+        return config
+
+    def get_mode_specific_config(self, mode):
+        config = {}
+
+        if mode == "Mode utilisateur":
+            config.update(self._setup_user_mode())
+        elif mode == "Mode temps limité":
+            config.update(self._setup_time_limited_mode())
+        else:
+            config.update(self._setup_unlimited_mode())
+
+        return config
+
+    def _setup_user_mode(self):
+        st.sidebar.subheader("Paramètres Q-Learning")
+
+        config = {
+            "alpha": st.sidebar.slider(
+                "Taux d'apprentissage (alpha)", 0.1, 1.0, 0.6, 0.1, key="alpha"
+            ),
+            "gamma": st.sidebar.slider(
+                "Facteur d'actualisation (gamma)", 0.1, 0.99, 0.7, 0.05, key="gamma"
+            ),
+            "epsilon": st.sidebar.slider(
+                "Epsilon initial", 0.1, 1.0, 0.8, 0.1, key="epsilon"
+            ),
+            "min_epsilon": st.sidebar.slider(
+                "Epsilon minimal", 0.01, 0.5, 0.1, 0.01, key="min_epsilon"
+            ),
+            "epsilon_decay": st.sidebar.slider(
+                "Taux de décroissance d'epsilon",
+                0.0001,
+                0.1,
+                0.0001,
+                0.0001,
+                format="%.4f",
+                key="epsilon_decay",
+            ),
+            "algo_choice": st.sidebar.multiselect(
+                "Algorithmes à exécuter",
+                ["Q-Learning", "DQN"],
+                default=["Q-Learning", "DQN"],
+            ),
+        }
+
+        st.write(
+            """
+        ## Mode utilisateur
+        Ce mode vous permet de configurer manuellement les paramètres des algorithmes 
+        d'apprentissage par renforcement pour résoudre l'environnement Taxi-v3.
+        """
+        )
+
+        return config
+
+    def _setup_time_limited_mode(self):
+        st.sidebar.subheader("Configuration du temps")
+        time_limit = st.sidebar.slider(
+            "Temps limite (secondes)", 1, 300, 60, key="time_limit"
+        )
+
+        st.write(
+            f"""
+        ## Mode temps limité
+        Les algorithmes s'exécuteront avec un temps limité de {time_limit} secondes.
+        Les paramètres sont optimisés automatiquement.
+        """
+        )
+
+        return {
+            "time_limit": time_limit,
+            "alpha": 0.6,
+            "gamma": 0.7,
+            "epsilon": 0.8,
+            "min_epsilon": 0.1,
+            "epsilon_decay": 1e-4,
+        }
+
+    def _setup_unlimited_mode(self):
+        st.write(
+            """
+        ## Mode temps illimité
+        Les algorithmes s'exécuteront sans limite de temps.
+        Les paramètres sont optimisés automatiquement.
+        """
+        )
+
+        return {
+            "alpha": 0.6,
+            "gamma": 0.7,
+            "epsilon": 0.8,
+            "min_epsilon": 0.1,
+            "epsilon_decay": 1e-4,
+        }
+
+    def load_pretrained_model(self, model_path):
+        if not model_path:
+            return True
+
+        try:
+            self.solver.dqn.load_model(model_path)
+            st.success(f"Modèle DQN chargé depuis {model_path}")
+            return True
+        except Exception as e:
+            st.error(f"Erreur lors du chargement du modèle DQN: {e}")
+            return False
+
+    def train_models(self, training_episodes, config):
+        with st.spinner("Entraînement des modèles en cours..."):
+            print("config", config)
+            q_train_rewards, q_train_steps = self.solver.q_learning.train_q_learning(
+                training_episodes,
+                config["alpha"],
+                config["gamma"],
+                config["epsilon"],
+                config["min_epsilon"],
+                config["epsilon_decay"],
+            )
+            dqn_train_rewards, dqn_train_steps = self.solver.dqn.train_dqn(
+                training_episodes
+            )
+
+            st.success("Entraînement terminé!")
+
+        return q_train_rewards, q_train_steps, dqn_train_rewards, dqn_train_steps
+
+    def test_models(self, testing_episodes, mode_config):
+        with st.spinner("Test des modèles en cours..."):
+            env = gym.make("Taxi-v3")
+
+            time_limit = mode_config.get("time_limit")
+            start_time = time()
+
+            q_test_rewards, q_test_steps = self.solver.q_learning.test_q_learning(
+                env=env,
+                episodes=testing_episodes,
+                start_time=start_time,
+                time_limit=time_limit,
+            )
+
+            dqn_test_rewards, dqn_test_steps = self.solver.dqn.test_dqn(
+                env=env,
+                episodes=testing_episodes,
+                start_time=start_time,
+                time_limit=time_limit,
+            )
+
+            env.close()
+            st.success("Tests terminés!")
+
+        return q_test_rewards, q_test_steps, dqn_test_rewards, dqn_test_steps
+
+    def plot_training_results(self, q_rewards, dqn_rewards, q_steps, dqn_steps):
+        st.subheader("Résultats d'entraînement")
+        self._plot_results(q_rewards, dqn_rewards, q_steps, dqn_steps)
+
+    def plot_test_results(self, q_rewards, dqn_rewards, q_steps, dqn_steps):
+        st.subheader("Résultats de test")
+        self._plot_results(q_rewards, dqn_rewards, q_steps, dqn_steps)
+
+        q_avg_reward = round(np.mean(q_rewards), 2)
+        dqn_avg_reward = round(np.mean(dqn_rewards), 2)
+        q_avg_steps = round(np.mean(q_steps), 2)
+        dqn_avg_steps = round(np.mean(dqn_steps), 2)
+
+        comparison_df = pd.DataFrame(
+            {
+                "Algorithme": ["Q-Learning", "DQN"],
+                "Récompense moyenne": [q_avg_reward, dqn_avg_reward],
+                "Étapes moyennes": [q_avg_steps, dqn_avg_steps],
+            }
+        )
+
+        st.subheader("Comparaison des performances")
+        st.dataframe(comparison_df, use_container_width=True)
+
+        fig = px.bar(
+            comparison_df,
+            x="Algorithme",
+            y=["Récompense moyenne", "Étapes moyennes"],
+            barmode="group",
+            title="Comparaison Q-Learning vs DQN",
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+    def _plot_results(self, q_rewards, dqn_rewards, q_steps, dqn_steps):
         if q_rewards is not None and dqn_rewards is not None:
             st.subheader("Récompenses obtenues")
             fig1 = go.Figure()
@@ -51,17 +261,12 @@ def main():
             )
             st.plotly_chart(fig1, use_container_width=True)
 
-            if len(q_rewards) >= 100 and len(dqn_rewards) >= 100:
-                q_avg = np.mean(q_rewards[-100:])
-                dqn_avg = np.mean(dqn_rewards[-100:])
+            q_avg = round(np.mean(q_rewards), 2)
+            dqn_avg = round(np.mean(dqn_rewards), 2)
 
-                cols = st.columns(2)
-                cols[0].metric(
-                    "Récompense moyenne Q-Learning (100 derniers)", f"{q_avg:.2f}"
-                )
-                cols[1].metric(
-                    "Récompense moyenne DQN (100 derniers)", f"{dqn_avg:.2f}"
-                )
+            cols = st.columns(2)
+            cols[0].metric("Récompense moyenne Q-Learning", f"{q_avg:.2f}")
+            cols[1].metric("Récompense moyenne DQN", f"{dqn_avg:.2f}")
 
         if q_steps is not None and dqn_steps is not None:
             st.subheader("Nombre d'étapes par épisode")
@@ -75,199 +280,91 @@ def main():
             )
             st.plotly_chart(fig2, use_container_width=True)
 
-            if len(q_steps) >= 100 and len(dqn_steps) >= 100:
-                q_steps_avg = np.mean(q_steps[-100:])
-                dqn_steps_avg = np.mean(dqn_steps[-100:])
+            q_steps_avg = np.mean(q_steps)
+            dqn_steps_avg = np.mean(dqn_steps)
+            cols = st.columns(2)
+            cols[0].metric("Étapes moyennes Q-Learning", f"{q_steps_avg:.2f}")
+            cols[1].metric("Étapes moyennes DQN", f"{dqn_steps_avg:.2f}")
 
-                cols = st.columns(2)
-                cols[0].metric(
-                    "Étapes moyennes Q-Learning (100 derniers)", f"{q_steps_avg:.2f}"
-                )
-                cols[1].metric(
-                    "Étapes moyennes DQN (100 derniers)", f"{dqn_steps_avg:.2f}"
-                )
-
-    def train_and_test():
-        with st.spinner("Entraînement des modèles en cours..."):
-            if mode == "Mode utilisateur":
-                alpha = st.session_state.get("alpha", 0.6)
-                gamma = st.session_state.get("gamma", 0.7)
-                epsilon = st.session_state.get("epsilon", 0.8)
-                min_epsilon = st.session_state.get("min_epsilon", 0.1)
-                epsilon_decay = st.session_state.get("epsilon_decay", 1e-4)
-            else:
-                alpha = 0.6
-                gamma = 0.7
-                epsilon = 0.8
-                min_epsilon = 0.1
-                epsilon_decay = 1e-4
-
-            q_train_rewards, q_train_steps = solver.q_learning.train_q_learning(
-                training_episodes,
-                alpha,
-                gamma,
-                epsilon,
-                min_epsilon,
-                epsilon_decay,
+    def handle_model_saving(self):
+        if st.session_state.get("can_save_dqn", False):
+            path_to_save = st.text_input(
+                "Chemin de sauvegarde du modèle DQN", "./taxi_dqn_model.pth"
             )
+            if st.button("Sauvegarder le modèle DQN", key="save_dqn_btn"):
+                try:
+                    self.solver.dqn.save_model(path_to_save)
+                    st.success(f"Modèle sauvegardé sous {path_to_save}")
 
-            if model_path:
-                solver.dqn.load_model(model_path)
-                dqn_train_rewards, dqn_train_steps = [], []
-                st.success(f"Modèle DQN chargé depuis {model_path}")
-            else:
-                dqn_train_rewards, dqn_train_steps = solver.dqn.train_dqn(
-                    training_episodes
-                )
+                except Exception as e:
+                    st.error(f"Erreur lors de la sauvegarde: {e}")
 
-            st.success("Entraînement terminé!")
-
-            st.subheader("Résultats d'entraînement")
-            plot_results(
-                q_train_rewards, dqn_train_rewards, q_train_steps, dqn_train_steps
-            )
-
-        with st.spinner("Test des modèles en cours..."):
-            env = gym.make("Taxi-v3")
-
-            time_limit = None
-            if mode == "Mode temps limité":
-                time_limit = st.session_state.get("time_limit", 60)
-
-            start_time = time()
-            q_test_rewards, q_test_steps = solver.q_learning.test_q_learning(
-                env=env,
-                episodes=testing_episodes,
-                start_time=start_time,
-                time_limit=time_limit,
-            )
-
-            dqn_test_rewards, dqn_test_steps = solver.dqn.test_dqn(
-                env=env,
-                episodes=testing_episodes,
-                start_time=start_time,
-                time_limit=time_limit,
-            )
-
-            env.close()
-
-            st.success("Tests terminés!")
-
-            st.subheader("Résultats de test")
-            plot_results(q_test_rewards, dqn_test_rewards, q_test_steps, dqn_test_steps)
-
-            q_avg_reward = np.mean(q_test_rewards)
-            dqn_avg_reward = np.mean(dqn_test_rewards)
-            q_avg_steps = np.mean(q_test_steps)
-            dqn_avg_steps = np.mean(dqn_test_steps)
-
-            comparison_df = pd.DataFrame(
-                {
-                    "Algorithme": ["Q-Learning", "DQN"],
-                    "Récompense moyenne": [q_avg_reward, dqn_avg_reward],
-                    "Étapes moyennes": [q_avg_steps, dqn_avg_steps],
-                }
-            )
-
-            st.subheader("Comparaison des performances")
-            st.dataframe(comparison_df, use_container_width=True)
-
-            fig = px.bar(
-                comparison_df,
-                x="Algorithme",
-                y=["Récompense moyenne", "Étapes moyennes"],
-                barmode="group",
-                title="Comparaison Q-Learning vs DQN",
-            )
-            st.plotly_chart(fig, use_container_width=True)
-
-            if st.button("Sauvegarder le modèle DQN"):
-                save_path = "./taxi_dqn_model.pth"
-                solver.dqn.save_model(save_path)
-                st.success(f"Modèle sauvegardé sous {save_path}")
-
-    if mode == "Mode utilisateur":
-        st.sidebar.subheader("Paramètres Q-Learning")
-        st.sidebar.slider(
-            "Taux d'apprentissage (alpha)", 0.1, 1.0, 0.6, 0.1, key="alpha"
-        )
-        st.sidebar.slider(
-            "Facteur d'actualisation (gamma)", 0.1, 0.99, 0.7, 0.05, key="gamma"
-        )
-        st.sidebar.slider("Epsilon initial", 0.1, 1.0, 0.8, 0.1, key="epsilon")
-        st.sidebar.slider("Epsilon minimal", 0.01, 0.5, 0.1, 0.01, key="min_epsilon")
-        st.sidebar.slider(
-            "Taux de décroissance d'epsilon",
-            0.0001,
-            0.1,
-            0.0001,
-            0.0001,
-            format="%.4f",
-            key="epsilon_decay",
-        )
-
-        algo_choice = st.sidebar.multiselect(
-            "Algorithmes à exécuter",
-            ["Q-Learning", "DQN"],
-            default=["Q-Learning", "DQN"],
-        )
-
-        st.write(
+    def show_environment_info(self):
+        with st.expander("À propos de l'environnement Taxi-v3"):
+            st.write(
+                """
+            L'environnement Taxi-v3 est un problème classique de reinforcement learning.
+            
+            **Description :**
+            - Un taxi se déplace sur une grille 5x5
+            - Il doit prendre un passager à un emplacement et le déposer à un autre
+            - Il y a 4 emplacements possibles (R, G, Y, B)
+            - Le taxi peut se déplacer (Nord, Sud, Est, Ouest), prendre ou déposer un passager
+            
+            **Récompenses :**
+            - -1 par action (pénalité pour chaque étape)
+            - -10 pour un ramassage ou dépôt illégal
+            - +20 pour une livraison réussie
+            
+            **Objectif :** Maximiser la récompense totale en minimisant le nombre d'étapes nécessaires.
             """
-        ## Mode utilisateur
-        Ce mode vous permet de configurer manuellement les paramètres des algorithmes 
-        d'apprentissage par renforcement pour résoudre l'environnement Taxi-v3.
-        """
+            )
+
+            st.image(
+                "https://www.gymlibrary.dev/_images/taxi.gif",
+                caption="Illustration de l'environnement Taxi-v3",
+            )
+
+    def run_training_and_testing(self, config, mode_config):
+        if not self.load_pretrained_model(config.get("model_path")):
+            return
+
+        q_train_rewards, q_train_steps, dqn_train_rewards, dqn_train_steps = (
+            self.train_models(config["training_episodes"], mode_config)
         )
 
-    elif mode == "Mode temps limité":
-        st.sidebar.subheader("Configuration du temps")
-        st.sidebar.slider("Temps limite (secondes)", 10, 300, 60, key="time_limit")
-
-        st.write(
-            f"""
-        ## Mode temps limité
-        Les algorithmes s'exécuteront avec un temps limité de {st.session_state.get('time_limit', 60)} secondes.
-        Les paramètres sont optimisés automatiquement.
-        """
+        self.plot_training_results(
+            q_train_rewards, dqn_train_rewards, q_train_steps, dqn_train_steps
         )
 
-    else:
-        st.write(
-            """
-        ## Mode temps illimité
-        Les algorithmes s'exécuteront sans limite de temps.
-        Les paramètres sont optimisés automatiquement.
-        """
+        q_test_rewards, q_test_steps, dqn_test_rewards, dqn_test_steps = (
+            self.test_models(config["testing_episodes"], mode_config)
         )
 
-    if st.button("Lancer l'apprentissage et les tests"):
-        train_and_test()
-
-    with st.expander("À propos de l'environnement Taxi-v3"):
-        st.write(
-            """
-        L'environnement Taxi-v3 est un problème classique de reinforcement learning.
-        
-        **Description :**
-        - Un taxi se déplace sur une grille 5x5
-        - Il doit prendre un passager à un emplacement et le déposer à un autre
-        - Il y a 4 emplacements possibles (R, G, Y, B)
-        - Le taxi peut se déplacer (Nord, Sud, Est, Ouest), prendre ou déposer un passager
-        
-        **Récompenses :**
-        - -1 par action (pénalité pour chaque étape)
-        - -10 pour un ramassage ou dépôt illégal
-        - +20 pour une livraison réussie
-        
-        **Objectif :** Maximiser la récompense totale en minimisant le nombre d'étapes nécessaires.
-        """
+        self.plot_test_results(
+            q_test_rewards, dqn_test_rewards, q_test_steps, dqn_test_steps
         )
 
-        st.image(
-            "https://www.gymlibrary.dev/_images/taxi.gif",
-            caption="Illustration de l'environnement Taxi-v3",
-        )
+        st.session_state["can_save_dqn"] = True
+
+    def run(self):
+        self.setup_page()
+
+        config = self.get_sidebar_config()
+
+        mode_config = self.get_mode_specific_config(config["mode"])
+
+        if st.button("Lancer l'apprentissage et les tests"):
+            self.run_training_and_testing(config, mode_config)
+
+        self.handle_model_saving()
+
+        self.show_environment_info()
+
+
+def main():
+    app = TaxiApp()
+    app.run()
 
 
 if __name__ == "__main__":

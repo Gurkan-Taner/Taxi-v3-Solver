@@ -172,7 +172,6 @@ class TaxiApp:
 
     def train_models(self, training_episodes, config):
         with st.spinner("Entraînement des modèles en cours..."):
-            print("config", config)
             q_train_rewards, q_train_steps = self.solver.q_learning.train_q_learning(
                 training_episodes,
                 config["alpha"],

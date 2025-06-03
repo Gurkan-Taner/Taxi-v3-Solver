@@ -84,7 +84,7 @@ class TaxiApp:
                 "Taux d'apprentissage (alpha)", 0.1, 1.0, 0.6, 0.1, key="alpha"
             ),
             "gamma": st.sidebar.slider(
-                "Facteur d'actualisation (gamma)", 0.1, 0.99, 0.7, 0.05, key="gamma"
+                "Facteur de réduction (gamma)", 0.1, 0.99, 0.7, 0.05, key="gamma"
             ),
             "epsilon": st.sidebar.slider(
                 "Epsilon initial", 0.1, 1.0, 0.8, 0.1, key="epsilon"
@@ -134,11 +134,11 @@ class TaxiApp:
 
         return {
             "time_limit": time_limit,
-            "alpha": 0.6,
-            "gamma": 0.7,
-            "epsilon": 0.8,
-            "min_epsilon": 0.1,
-            "epsilon_decay": 1e-4,
+            "alpha": 0.37,
+            "gamma": 0.907,
+            "epsilon": 0.388,
+            "min_epsilon": 0.01,
+            "epsilon_decay": 0.9964,
         }
 
     def _setup_unlimited_mode(self):
@@ -151,11 +151,11 @@ class TaxiApp:
         )
 
         return {
-            "alpha": 0.6,
-            "gamma": 0.7,
-            "epsilon": 0.8,
-            "min_epsilon": 0.1,
-            "epsilon_decay": 1e-4,
+            "alpha": 0.37,
+            "gamma": 0.907,
+            "epsilon": 0.388,
+            "min_epsilon": 0.01,
+            "epsilon_decay": 0.9964,
         }
 
     def load_pretrained_model(self, model_path):

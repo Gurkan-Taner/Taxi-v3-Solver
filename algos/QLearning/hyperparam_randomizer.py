@@ -1,7 +1,6 @@
 import gymnasium as gym
 import numpy as np
 import tqdm
-from matplotlib import pyplot as plt
 import json
 
 
@@ -96,7 +95,6 @@ if __name__ == "__main__":
             hyper_params=hyper_params,
             train_episodes=train_episodes,
         )
-        print(f"hyper_param: {hyper_params}")
 
         test_matrix(q_matrix=q_matrix, env=env, hyper_params=hyper_params)
 

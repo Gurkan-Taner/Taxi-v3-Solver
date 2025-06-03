@@ -8,12 +8,12 @@ from collections import deque
 from tqdm import tqdm
 import numpy as np
 
-GAMMA = 0.99  # Facteur de réduction pour les récompenses futures
+GAMMA = 0.99  # Facteur de réduction
 BATCH_SIZE = 64  # Taille du batch pour l'apprentissage
 BUFFER_SIZE = 10000  # Taille du buffer d'expérience replay
 MIN_REPLAY_SIZE = 1000  # Taille minimale du buffer avant de commencer l'apprentissage
-EPSILON_START = 1.0  # Valeur initiale d'epsilon (exploration)
-EPSILON_END = 0.1  # Valeur finale d'epsilon
+EPSILON_START = 1.0  # Valeur initiale d'epsilon
+EPSILON_MIN = 0.1  # Valeur minimale d'epsilon
 EPSILON_DECAY = 0.995  # Taux de décroissance d'epsilon
 TARGET_UPDATE_FREQ = 100  # Fréquence de mise à jour du réseau cible
 LEARNING_RATE = 1e-3  # Taux d'apprentissage
@@ -121,7 +121,7 @@ class DQNAgent:
 
                 step += 1
 
-            epsilon = max(EPSILON_END, epsilon * EPSILON_DECAY)
+            epsilon = max(EPSILON_MIN, epsilon * EPSILON_DECAY)
 
             all_rewards.append(episode_reward)
             all_steps.append(episode_steps)
